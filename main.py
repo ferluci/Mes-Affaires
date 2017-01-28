@@ -245,11 +245,10 @@ def table_check():
     else:
         for table in table_list:
             if table[2] == 'users':
-                accounts_check = 1
-        if accounts_check != 1:
-            cur.execute(
-                "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
-            con.commit()
+                return
+        cur.execute(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
+        con.commit()
 
 
 if __name__ == '__main__':
