@@ -1,2 +1,2 @@
 # Mes-Affaires
-Simple Note-Book application on Python
+Simple notebook application on Python
