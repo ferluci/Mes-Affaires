@@ -5,6 +5,72 @@ from tkinter import ttk
 import re
 
 
+def main():
+    global con, cur, root, app
+    con = sqlite3.connect('accounts.db')
+    cur = con.cursor()
+
+    # Check the existence of a user table
+    #
+    # Getting all tables from db
+    cur.execute("SELECT * FROM sqlite_master WHERE type='table';")
+    table_list = cur.fetchall()
+    # Checking tables. If db does not contain table with users, we will create it.
+    if len(table_list) == 0:
+        cur.execute(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
+        con.commit()
+    else:
+        if [table[2] for table in table_list].count('users') < 1:
+            cur.execute(
+                "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
+            con.commit()
+
+    root = Tk()
+    root.title("Login Page")
+    app = Login(root)
+    center(root)
+    root.mainloop()
+
+
+def center(toplevel):
+    # Centering window
+    toplevel.update_idletasks()
+    w = toplevel.winfo_screenwidth()
+    h = toplevel.winfo_screenheight()
+    size = tuple(int(_) for _ in toplevel.geometry().split('+')[0].split('x'))
+    x = w / 2 - size[0] / 2
+    y = h / 2 - size[1] / 2
+    toplevel.geometry("%dx%d+%d+%d" % (size + (x, y)))
+
+
+def get_id(table):
+    # Getting id from table for creating next element in table
+    # If table is empty we will catch an exception
+    # Else, we will get max id in format [(id,)] and then incriment it
+    try:
+        cur.execute(
+            "SELECT id FROM " + table + " WHERE id=(SELECT max(id) FROM " + table + " );")
+        max_id = cur.fetchall()[0][0]
+        id = max_id + 1
+    except IndexError:
+        id = 0
+    return str(id)
+
+
+class Note():
+    def __init__(self, id, text, date):
+        self.id = id
+        self.text = text
+        self.date = date
+
+    def __str__(self):
+        return self.text
+
+    def __len__(self):
+        return len(self.text)
+
+
 class Login(Frame):
     def __init__(self, master):
         super(Login, self).__init__(master)
@@ -102,19 +168,6 @@ class Login(Frame):
         root.mainloop()
 
 
-class Note():
-    def __init__(self, id, text, date):
-        self.id = id
-        self.text = text
-        self.date = date
-
-    def __str__(self):
-        return self.text
-
-    def __len__(self):
-        return len(self.text)
-
-
 class UserFrame(Frame):
     def __init__(self, master):
         super(UserFrame, self).__init__(master)
@@ -207,56 +260,5 @@ class UserFrame(Frame):
                 self.note_box.config(text=note.date + "\n" + note.text)
 
 
-def center(toplevel):
-    # Centering window
-    toplevel.update_idletasks()
-    w = toplevel.winfo_screenwidth()
-    h = toplevel.winfo_screenheight()
-    size = tuple(int(_) for _ in toplevel.geometry().split('+')[0].split('x'))
-    x = w / 2 - size[0] / 2
-    y = h / 2 - size[1] / 2
-    toplevel.geometry("%dx%d+%d+%d" % (size + (x, y)))
-
-
-def get_id(table):
-    # Getting id from table for creating next element in table
-    # If table is empty we will catch an exception
-    # Else, we will get max id in format [(id,)] and then incriment it
-    try:
-        cur.execute(
-            "SELECT id FROM " + table + " WHERE id=(SELECT max(id) FROM " + table + " );")
-        max_id = cur.fetchall()[0][0]
-        id = max_id + 1
-    except IndexError:
-        id = 0
-    return str(id)
-
-
-def table_check():
-    '''Check the existence of a user table'''
-    # Getting all tables from db
-    cur.execute("SELECT * FROM sqlite_master WHERE type='table';")
-    table_list = cur.fetchall()
-    # Checking tables. If db does not contain table with users, we will create it.
-    if len(table_list) == 0:
-        cur.execute(
-            "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
-        con.commit()
-    else:
-        for table in table_list:
-            if table[2] == 'users':
-                return
-        cur.execute(
-            "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
-        con.commit()
-
-
 if __name__ == '__main__':
-    con = sqlite3.connect('accounts.db')
-    cur = con.cursor()
-    table_check()
-    root = Tk()
-    root.title("Login Page")
-    app = Login(root)
-    center(root)
-    root.mainloop()
+    main()
