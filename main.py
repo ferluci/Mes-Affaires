@@ -6,35 +6,38 @@ import re
 
 
 def main():
-    global con, cur, root, app
+    global con, cur
     con = sqlite3.connect('accounts.db')
     cur = con.cursor()
 
-    # Check the existence of a user table
-    #
     # Getting all tables from db
     cur.execute("SELECT * FROM sqlite_master WHERE type='table';")
     table_list = cur.fetchall()
     # Checking tables. If db does not contain table with users, we will create it.
-    if len(table_list) == 0:
+    if len(table_list) == 0 or [table[2] for table in table_list].count('users') < 1:
         cur.execute(
             "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
         con.commit()
-    else:
-        if [table[2] for table in table_list].count('users') < 1:
-            cur.execute(
-                "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
-            con.commit()
+    create_window(Login, "Login Page")
 
+
+def create_window(window_class, title):
+    global root, app
+    try:
+        root.destroy()
+    except NameError:
+        pass
     root = Tk()
-    root.title("Login Page")
-    app = Login(root)
+    root.resizable(width=False, height=False)
+    root.title(title)
+    app = window_class(root)
     center(root)
+    root.focus_force()
     root.mainloop()
 
 
 def center(toplevel):
-    # Centering window
+    # Centering the window
     toplevel.update_idletasks()
     w = toplevel.winfo_screenwidth()
     h = toplevel.winfo_screenheight()
@@ -111,22 +114,31 @@ class Login(Frame):
             self, text="Sign In", command=self.sing_in, width=13)
         self.sign_in_button.grid(row=3, column=2)
 
+        # Binds
+        root.bind('<Return>', self.sing_in)
+
+        for child in self.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+
     def get_password(self):
         # Getting password from the table
         cur.execute("SELECT password FROM users WHERE username = \"" +
                     str(self.user_entry.get()) + "\";")
 
         # Return password in format [("password",)] if user is registerd
-        # If not, it will return empty list
+        # If not, function will return empty list
         return cur.fetchall()
 
-    def sing_in(self):
+    def sing_in(self, event=None):
         pass_get = self.pass_entry.get()
+        user_get = self.user_entry.get()
         table_password = self.get_password()
 
         if table_password != [] and pass_get != '' and table_password[0][0] == pass_get:
             self.title.config(text='Logged')
-            self.main_window()
+            global user_table
+            user_table = user_get
+            create_window(UserFrame, "Notes")
         else:
             self.title.config(text='Invalid Login or Password')
 
@@ -157,16 +169,6 @@ class Login(Frame):
         else:
             self.title.config(text='Sorry, this username is arleady taken')
 
-    def main_window(self):
-        global root, app, user_table
-        user_table = self.user_entry.get()
-        root.destroy()
-        root = Tk()
-        root.title("Notes")
-        app = UserFrame(root)
-        center(root)
-        root.mainloop()
-
 
 class UserFrame(Frame):
     def __init__(self, master):
@@ -183,14 +185,14 @@ class UserFrame(Frame):
 
         # Delete button
         self.delete_button = ttk.Button(self, text="Delete", command=self.delete_note)
-        self.delete_button.grid(column=0, row=1, columnspan=1, ipadx=10)
+        self.delete_button.grid(column=0, row=1, columnspan=1, sticky='e')
 
         # Note entry box
-        self.note_entry = Entry(self, width=50)
+        self.note_entry = Entry(self, width=30)
         self.note_entry.grid(column=0, row=2, sticky='w')
 
         # Result label
-        self.result_frame = ttk.LabelFrame(self, text='Notes', height=70)
+        self.result_frame = ttk.LabelFrame(self, text='Notes', height=40)
         self.result_frame.grid(column=0, row=4, sticky='nwes')
 
         # Scrollbar
@@ -198,7 +200,7 @@ class UserFrame(Frame):
         self.scrollbar.pack(side=RIGHT, fill=Y)
 
         # Listboxs
-        self.list_box = Listbox(self.result_frame, width=50)
+        self.list_box = Listbox(self.result_frame, width=25)
         self.list_box.pack()
 
         # Scrollbar config
@@ -214,6 +216,7 @@ class UserFrame(Frame):
             child.grid_configure(padx=5, pady=5)
 
         # Binds
+        root.bind('<Return>', self.add_note)
         self.list_box.bind('<Double-1>', self.show_note)
 
         # Filling list_box
@@ -228,11 +231,16 @@ class UserFrame(Frame):
             else:
                 self.list_box.insert(END, str(note.text)[:15] + "...")
 
-    def add_note(self):
+    def add_note(self, event=None):
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         note = self.note_entry.get()
         self.note_entry.delete(0, 'end')
-        if len(note) < 15:
+        if len(note) == 0:
+            return
+        elif len(note) > 132:
+            self.note_box.config(text='Sorry, but your message too long \n max - 132 char')
+            return
+        elif len(note) < 15:
             self.list_box.insert(END, note)
         else:
             self.list_box.insert(END, str(note)[:15] + "...")
