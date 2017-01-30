@@ -175,6 +175,7 @@ class UserFrame(Frame):
         super(UserFrame, self).__init__(master)
         self.grid()
         self.notes = []
+        self.id_list = []
         self.main_window()
 
     def main_window(self):
@@ -183,40 +184,48 @@ class UserFrame(Frame):
         self.add_button = ttk.Button(self, text="Add", command=self.add_note)
         self.add_button.grid(column=0, row=1, columnspan=1, sticky='w')
 
+        # Update button
+        self.update_button = ttk.Button(self, text="Save", command=self.save_note)
+        self.update_button.grid(column=0, row=1, columnspan=2, sticky='w')
         # Delete button
         self.delete_button = ttk.Button(self, text="Delete", command=self.delete_note)
-        self.delete_button.grid(column=0, row=1, columnspan=1, sticky='e')
+        self.delete_button.grid(column=0, row=1, columnspan=2, sticky='w')
 
-        # Note entry box
-        self.note_entry = Entry(self, width=30)
-        self.note_entry.grid(column=0, row=2, sticky='w')
+        # Text label
+        self.note_frame = ttk.LabelFrame(self, text='Click on the note from the right column', height=40)
+        self.note_frame.grid(column=0, row=3, sticky='nwes')
 
-        # Result label
-        self.result_frame = ttk.LabelFrame(self, text='Notes', height=40)
-        self.result_frame.grid(column=0, row=4, sticky='nwes')
+        self.text_scroll = Scrollbar(self.note_frame)
+        self.text_scroll.pack(side=RIGHT, fill=Y)
+
+        self.text_box = Text(self.note_frame, width=30, height=15)
+        self.text_box.pack()
+
+        # Notes list label
+        self.note_list_frame = ttk.LabelFrame(self, text='Notes', height=80)
+        self.note_list_frame.grid(column=1, row=3, sticky='n')
 
         # Scrollbar
-        self.scrollbar = Scrollbar(self.result_frame)
+        self.scrollbar = Scrollbar(self.note_list_frame)
         self.scrollbar.pack(side=RIGHT, fill=Y)
 
         # Listboxs
-        self.list_box = Listbox(self.result_frame, width=25)
+        self.list_box = Listbox(self.note_list_frame, width=20, height=15)
         self.list_box.pack()
 
         # Scrollbar config
         self.list_box.config(yscrollcommand=self.scrollbar.set)
         self.scrollbar.config(command=self.list_box.yview)
 
-        # Note box
-        self.note_box = Message(self, text="Double-click on the message to the full view")
-        self.note_box.config(aspect=500, justify=CENTER, width=90)
-        self.note_box.grid(column=2, row=4)
-
+        #
         for child in self.winfo_children():
-            child.grid_configure(padx=5, pady=5)
+            child.grid_configure(padx=3, pady=3)
+
+        self.add_button.grid(padx=20)
+        self.update_button.grid(padx=105)
+        self.delete_button.grid(padx=190)
 
         # Binds
-        root.bind('<Return>', self.add_note)
         self.list_box.bind('<Double-1>', self.show_note)
 
         # Filling list_box
@@ -226,46 +235,76 @@ class UserFrame(Frame):
             # We get notes from table in format [(id, text, date),...]
             note = Note(note[0], note[1], note[2])
             self.notes.append(note)
-            if len(note) < 15:
-                self.list_box.insert(END, note.text)
-            else:
-                self.list_box.insert(END, str(note.text)[:15] + "...")
+            self.id_list.append(note.id)
+            self.listbox_update(note.text)
 
-    def add_note(self, event=None):
-        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        note = self.note_entry.get()
-        self.note_entry.delete(0, 'end')
-        if len(note) == 0:
-            return
-        elif len(note) > 132:
-            self.note_box.config(text='Sorry, but your message too long \n max - 132 char')
-            return
-        elif len(note) < 15:
-            self.list_box.insert(END, note)
+    def listbox_update(self, note_text, listbox_id=END):
+        if len(note_text) == 0:
+            return 0
+        elif len(note_text) < 15:
+            self.list_box.insert(listbox_id, re.sub(r'\n', ' ', note_text))
         else:
-            self.list_box.insert(END, str(note)[:15] + "...")
-        id = get_id(user_table)
-        self.notes.append(Note(id, note, current_date))
-        VALUES = id + ", \"" + note + "\",\"" + current_date + "\""
+            self.list_box.insert(listbox_id, re.sub(r'\n', ' ', note_text)[:15] + "...")
+
+    def delete_note_from_table(self, note_id):
+        cur.execute("DELETE FROM " + str(user_table) + " WHERE id=" + str(note_id) + ";")
+        con.commit()
+
+    def insert_note_into_table(self, note_id, note_text, note_date):
+        VALUES = str(note_id) + ", \"" + str(note_text) + "\",\"" + str(note_date) + "\""
         cur.execute(
             "INSERT INTO " + user_table + " (id, note, date) VALUES(" + VALUES + ");")
         con.commit()
 
-    def delete_note(self):
-        selected_note = self.list_box.get(ACTIVE)
+    def add_note(self, event=None):
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        note_text = self.text_box.get("1.0", END)[:-1]
+        self.text_box.delete("1.0", END)
+        id = get_id(user_table)
+        self.listbox_update(note_text)
+        self.id_list.append(id)
+        self.notes.append(Note(id, note_text, current_date))
+        self.insert_note_into_table(id, note_text, current_date)
+
+    def save_note(self):
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        note_text = self.text_box.get("1.0", END)[:-1]
+        selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
+
+        if self.listbox_update(note_text, self.list_box.index(ACTIVE)) == 0:
+            self.note_frame.config(text="USE DELETE METHOD!")
+            return
+
+        self.delete_note_from_table(selected_note_id)
+        self.insert_note_into_table(selected_note_id, note_text, current_date)
+
+        self.list_box.delete(ANCHOR)
+        self.note_frame.config(text="Saved!")
+        # !!! Not optimal algorithm
         for note in self.notes:
-            if note.text[:15] == str(selected_note)[:15]:
-                self.list_box.delete(ANCHOR)
-                cur.execute("DELETE FROM " + user_table + " WHERE id=" + str(note.id) + ";")
-                con.commit()
+            if note.id == selected_note_id:
+                self.notes[self.notes.index(note)] = Note(selected_note_id, note_text, current_date)
+
+    def delete_note(self):
+        selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
+        self.list_box.delete(ANCHOR)
+        self.delete_note_from_table(selected_note_id)
+        self.text_box.delete("1.0", END)
+        # !!! Not optimal algorithm
+        for note in self.notes:
+            if note.id == selected_note_id:
                 self.notes.pop(self.notes.index(note))
-                break
+                return
 
     def show_note(self, event):
-        selected_note = self.list_box.get(ACTIVE)
+        selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
+        # !!! Not optimal algorithm
         for note in self.notes:
-            if note.text[:15] == str(selected_note)[:15]:
-                self.note_box.config(text=note.date + "\n" + note.text)
+            if note.id == selected_note_id:
+                self.text_box.delete("1.0", END)
+                self.text_box.insert(END, str(note))
+                self.note_frame.config(text=note.date)
+                return
 
 
 if __name__ == '__main__':
