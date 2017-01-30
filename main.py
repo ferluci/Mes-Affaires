@@ -3,7 +3,6 @@ import datetime
 from tkinter import *
 from tkinter import ttk
 import re
-from bisect import bisect_left
 
 
 def main():
@@ -175,6 +174,8 @@ class UserFrame(Frame):
     def __init__(self, master):
         super(UserFrame, self).__init__(master)
         self.grid()
+        self.notes = []
+        self.id_list = []
         self.main_window()
 
     def main_window(self):
@@ -184,7 +185,7 @@ class UserFrame(Frame):
         self.add_button.grid(column=0, row=1, columnspan=1, sticky='w')
 
         # Update button
-        self.update_button = ttk.Button(self, text="Save", command=self.update_note)
+        self.update_button = ttk.Button(self, text="Save", command=self.save_note)
         self.update_button.grid(column=0, row=1, columnspan=2, sticky='w')
         # Delete button
         self.delete_button = ttk.Button(self, text="Delete", command=self.delete_note)
@@ -216,7 +217,7 @@ class UserFrame(Frame):
         self.list_box.config(yscrollcommand=self.scrollbar.set)
         self.scrollbar.config(command=self.list_box.yview)
 
-        # Ornamentation
+        #
         for child in self.winfo_children():
             child.grid_configure(padx=3, pady=3)
 
@@ -230,8 +231,6 @@ class UserFrame(Frame):
         # Filling list_box
         cur.execute("SELECT * FROM " + user_table + ";")
         notes = cur.fetchall()
-        self.notes = []  # Сonvenient storage of notes
-        self.id_list = []
         for note in notes:
             # We get notes from table in format [(id, text, date),...]
             note = Note(note[0], note[1], note[2])
@@ -260,16 +259,14 @@ class UserFrame(Frame):
     def add_note(self, event=None):
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         note_text = self.text_box.get("1.0", END)[:-1]
-        id = get_id(user_table)
-
         self.text_box.delete("1.0", END)
+        id = get_id(user_table)
         self.listbox_update(note_text)
-
         self.id_list.append(id)
         self.notes.append(Note(id, note_text, current_date))
         self.insert_note_into_table(id, note_text, current_date)
 
-    def update_note(self):
+    def save_note(self):
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         note_text = self.text_box.get("1.0", END)[:-1]
         selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
@@ -283,30 +280,31 @@ class UserFrame(Frame):
 
         self.list_box.delete(ANCHOR)
         self.note_frame.config(text="Saved!")
-
-        # note.id has equivalent index in self.id_list and self.notes, so we can use it
-        selected_note = self.notes[bisect_left(self.id_list, selected_note_id)]
-        # Updating note list
-        self.notes[self.notes.index(selected_note)] = Note(selected_note_id, note_text, current_date)
+        # !!! Not optimal algorithm
+        for note in self.notes:
+            if note.id == selected_note_id:
+                self.notes[self.notes.index(note)] = Note(selected_note_id, note_text, current_date)
 
     def delete_note(self):
-        selected_note_id = self.id_list[self.lifst_box.index(ACTIVE)]
-
+        selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
         self.list_box.delete(ANCHOR)
-        self.text_box.delete("1.0", END)
         self.delete_note_from_table(selected_note_id)
-
-        selected_note = self.notes[bisect_left(self.id_list, selected_note_id)]
-        self.notes.pop(self.notes.index(selected_note))
+        self.text_box.delete("1.0", END)
+        # !!! Not optimal algorithm
+        for note in self.notes:
+            if note.id == selected_note_id:
+                self.notes.pop(self.notes.index(note))
+                return
 
     def show_note(self, event):
         selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
-        selected_note = self.notes[bisect_left(self.id_list, selected_note_id)]
-
-        self.text_box.delete("1.0", END)
-        self.text_box.insert(END, str(selected_note))
-
-        self.note_frame.config(text=selected_note.date)
+        # !!! Not optimal algorithm
+        for note in self.notes:
+            if note.id == selected_note_id:
+                self.text_box.delete("1.0", END)
+                self.text_box.insert(END, str(note))
+                self.note_frame.config(text=note.date)
+                return
 
 
 if __name__ == '__main__':
