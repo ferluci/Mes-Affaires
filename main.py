@@ -290,7 +290,7 @@ class UserFrame(Frame):
         self.notes[self.notes.index(selected_note)] = Note(selected_note_id, note_text, current_date)
 
     def delete_note(self):
-        selected_note_id = self.id_list[self.lifst_box.index(ACTIVE)]
+        selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
 
         self.list_box.delete(ANCHOR)
         self.text_box.delete("1.0", END)
