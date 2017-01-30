@@ -151,6 +151,9 @@ class Login(Frame):
         if len(re.findall(r'^\d{1}', user_get)) != 0:
             self.title.config(text='Invalid Login, first letter must be a liter')
             return
+        elif len(user_get) == 0 or len(pass_get) == 0:
+            self.title.config(text='Invalid Login or Password')
+            return
 
         if len(table_password) == 0:
             id = get_id('users')
@@ -234,12 +237,12 @@ class UserFrame(Frame):
         cur.execute("SELECT * FROM " + user_table + ";")
         notes = cur.fetchall()
         self.notes = []  # Сonvenient storage of notes
-        self.id_list = []
+        self.notes_id_list = []
         for note in notes:
             # We get notes from table in format [(id, text, date),...]
             note = Note(note[0], note[1], note[2])
             self.notes.append(note)
-            self.id_list.append(note.id)
+            self.notes_id_list.append(note.id)
             self.listbox_update(note.text)
 
     def listbox_update(self, note_text, listbox_id=END):
@@ -268,17 +271,20 @@ class UserFrame(Frame):
         self.text_box.delete("1.0", END)
         self.listbox_update(note_text)
 
-        self.id_list.append(int(id))
+        self.notes_id_list.append(int(id))
         self.notes.append(Note(id, note_text, current_date))
         self.insert_note_into_table(id, note_text, current_date)
 
     def update_note(self):
+        if len(self.notes) == 0:
+            return
+
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         note_text = self.text_box.get("1.0", END)[:-1]
-        selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
+        selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
 
         if self.listbox_update(note_text, self.list_box.index(ACTIVE)) == 0:
-            self.note_frame.config(text="USE DELETE METHOD!")
+            self.note_frame.config(text="Use delete method!")
             return
 
         self.delete_note_from_table(selected_note_id)
@@ -287,24 +293,30 @@ class UserFrame(Frame):
         self.list_box.delete(ANCHOR)
         self.note_frame.config(text="Saved!")
 
-        # note.id has equivalent index in self.id_list and self.notes, so we can use it
-        selected_note = self.notes[bisect_left(self.id_list, selected_note_id)]
+        # note.id has equivalent index in self.notes_id_list and self.notes, so we can use it
+        selected_note = self.notes[bisect_left(self.notes_id_list, selected_note_id)]
         # Updating note list
         self.notes[self.notes.index(selected_note)] = Note(selected_note_id, note_text, current_date)
 
     def delete_note(self):
-        selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
+        if len(self.notes) == 0:
+            return
+
+        selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
 
         self.list_box.delete(ANCHOR)
         self.text_box.delete("1.0", END)
         self.delete_note_from_table(selected_note_id)
 
-        selected_note = self.notes[bisect_left(self.id_list, selected_note_id)]
+        selected_note = self.notes[bisect_left(self.notes_id_list, selected_note_id)]
         self.notes.pop(self.notes.index(selected_note))
 
     def show_note(self, event):
-        selected_note_id = self.id_list[self.list_box.index(ACTIVE)]
-        selected_note = self.notes[bisect_left(self.id_list, selected_note_id)]
+        if len(self.notes) == 0:
+            return
+
+        selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
+        selected_note = self.notes[bisect_left(self.notes_id_list, selected_note_id)]
 
         self.text_box.delete("1.0", END)
         self.text_box.insert(END, str(selected_note))
