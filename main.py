@@ -1,8 +1,8 @@
+import re
 import sqlite3
 import datetime
 from tkinter import *
 from tkinter import ttk
-import re
 from bisect import bisect_left
 
 
@@ -194,9 +194,11 @@ class UserFrame(Frame):
         self.note_frame = ttk.LabelFrame(self, text='Click on the note from the right column', height=40)
         self.note_frame.grid(column=0, row=3, sticky='nwes')
 
+        # Text scrollbar
         self.text_scroll = Scrollbar(self.note_frame)
         self.text_scroll.pack(side=RIGHT, fill=Y)
 
+        # Textbox
         self.text_box = Text(self.note_frame, width=30, height=15)
         self.text_box.pack()
 
@@ -204,7 +206,7 @@ class UserFrame(Frame):
         self.note_list_frame = ttk.LabelFrame(self, text='Notes', height=80)
         self.note_list_frame.grid(column=1, row=3, sticky='n')
 
-        # Scrollbar
+        # Note_list Scrollbar
         self.scrollbar = Scrollbar(self.note_list_frame)
         self.scrollbar.pack(side=RIGHT, fill=Y)
 
