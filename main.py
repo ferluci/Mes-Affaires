@@ -264,8 +264,10 @@ class UserFrame(Frame):
         con.commit()
 
     def add_note(self, event=None):
-        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         note_text = self.text_box.get("1.0", END)[:-1]
+        if len(note_text) == 0:
+            return
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         id = get_id(user_table)
 
         self.text_box.delete("1.0", END)
