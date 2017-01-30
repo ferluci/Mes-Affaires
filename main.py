@@ -236,6 +236,7 @@ class UserFrame(Frame):
         # Filling list_box
         cur.execute("SELECT * FROM " + user_table + ";")
         notes = cur.fetchall()
+        self.execute_status = 0  # Using for preventing unexpected behavior
         self.notes = []  # Сonvenient storage of notes
         self.notes_id_list = []
         for note in notes:
@@ -301,8 +302,10 @@ class UserFrame(Frame):
         self.notes[self.notes.index(selected_note)] = Note(selected_note_id, note_text, current_date)
 
     def delete_note(self):
-        if len(self.notes) == 0:
+        if self.execute_status == 0:
+            self.note_frame.config(text="Select a note")
             return
+        self.execute_status = 0
 
         selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
 
@@ -324,6 +327,8 @@ class UserFrame(Frame):
         self.text_box.insert(END, str(selected_note))
 
         self.note_frame.config(text=selected_note.date)
+
+        self.execute_status = 1
 
 
 if __name__ == '__main__':
