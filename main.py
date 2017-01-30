@@ -203,7 +203,7 @@ class UserFrame(Frame):
         self.text_scroll.pack(side=RIGHT, fill=Y)
 
         # Textbox
-        self.text_box = Text(self.note_frame, width=30, height=15)
+        self.text_box = Text(self.note_frame, width=30, height=15, wrap=WORD)
         self.text_box.pack()
 
         # Notes list label
