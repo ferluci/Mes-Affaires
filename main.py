@@ -265,7 +265,7 @@ class UserFrame(Frame):
         self.text_box.delete("1.0", END)
         self.listbox_update(note_text)
 
-        self.id_list.append(id)
+        self.id_list.append(int(id))
         self.notes.append(Note(id, note_text, current_date))
         self.insert_note_into_table(id, note_text, current_date)
 
