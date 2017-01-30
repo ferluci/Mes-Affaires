@@ -183,9 +183,10 @@ class UserFrame(Frame):
         self.add_button = ttk.Button(self, text="Add", command=self.add_note)
         self.add_button.grid(column=0, row=1, columnspan=1, sticky='w')
 
-        # Update button
+        # Save button
         self.update_button = ttk.Button(self, text="Save", command=self.update_note)
         self.update_button.grid(column=0, row=1, columnspan=2, sticky='w')
+
         # Delete button
         self.delete_button = ttk.Button(self, text="Delete", command=self.delete_note)
         self.delete_button.grid(column=0, row=1, columnspan=2, sticky='w')
