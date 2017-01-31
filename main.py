@@ -302,6 +302,8 @@ class UserFrame(Frame):
         self.notes[self.notes.index(selected_note)] = Note(selected_note_id, note_text, current_date)
 
     def delete_note(self):
+        # This check is carried out, because after deleting of the active note,
+        # its index still remains active, but not shown
         if self.execute_status == 0:
             self.note_frame.config(text="Select a note")
             return
