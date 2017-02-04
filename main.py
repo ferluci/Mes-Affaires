@@ -1,24 +1,22 @@
 import re
-import sqlite3
 import datetime
 from tkinter import *
 from tkinter import ttk
-from bisect import bisect_left
+from sqlite3 import connect
 
 
 def main():
     global con, cur
-    con = sqlite3.connect('accounts.db')
+    con = connect('accounts.db')
     cur = con.cursor()
 
     # Getting all tables from db
     cur.execute("SELECT * FROM sqlite_master WHERE type='table';")
-    table_list = cur.fetchall()
     # Checking tables. If db does not contain table with users, we will create it.
-    if len(table_list) == 0 or [table[2] for table in table_list].count('users') < 1:
-        cur.execute(
-            "CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
-        con.commit()
+
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
+    con.commit()
     create_window(Login, "Login Page")
 
 
@@ -183,7 +181,7 @@ class UserFrame(Frame):
     def main_window(self):
 
         # Add button
-        self.add_button = ttk.Button(self, text="Add", command=self.add_note)
+        self.add_button = ttk.Button(self, text="New Note", command=self.new_note)
         self.add_button.grid(column=0, row=1, columnspan=1, sticky='w')
 
         # Save button
@@ -264,10 +262,11 @@ class UserFrame(Frame):
             "INSERT INTO " + user_table + " (id, note, date) VALUES(" + VALUES + ");")
         con.commit()
 
-    def add_note(self, event=None):
+    def new_note(self, event=None):
         note_text = self.text_box.get("1.0", END)[:-1]
         if len(note_text) == 0:
             return
+
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         id = get_id(user_table)
 
@@ -297,7 +296,7 @@ class UserFrame(Frame):
         self.note_frame.config(text="Saved!")
 
         # note.id has equivalent index in self.notes_id_list and self.notes, so we can use it
-        selected_note = self.notes[bisect_left(self.notes_id_list, selected_note_id)]
+        selected_note = self.notes[self.notes_id_list.index(selected_note_id)]
         # Updating note list
         self.notes[self.notes.index(selected_note)] = Note(selected_note_id, note_text, current_date)
 
@@ -315,7 +314,7 @@ class UserFrame(Frame):
         self.text_box.delete("1.0", END)
         self.delete_note_from_table(selected_note_id)
 
-        selected_note = self.notes[bisect_left(self.notes_id_list, selected_note_id)]
+        selected_note = self.notes[self.notes_id_list.index(selected_note_id)]
         self.notes.pop(self.notes.index(selected_note))
 
     def show_note(self, event):
@@ -323,7 +322,7 @@ class UserFrame(Frame):
             return
 
         selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
-        selected_note = self.notes[bisect_left(self.notes_id_list, selected_note_id)]
+        selected_note = self.notes[self.notes_id_list.index(selected_note_id)]
 
         self.text_box.delete("1.0", END)
         self.text_box.insert(END, str(selected_note))
