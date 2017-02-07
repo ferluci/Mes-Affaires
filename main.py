@@ -11,11 +11,11 @@ def main():
     cur = con.cursor()
 
     # Getting all tables from db
-    cur.execute("SELECT * FROM sqlite_master WHERE type='table';")
+    cur.execute("SELECT * FROM sqlite_master WHERE type='table'")
     # Checking tables. If db does not contain table with users, we will create it.
 
     cur.execute(
-        "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30));")
+        "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30))")
     con.commit()
     create_window(Login, "Login Page")
 
@@ -52,7 +52,7 @@ def get_id(table):
     # Else, we will get max id in format [(id,)] and then incriment it
     try:
         cur.execute(
-            "SELECT id FROM " + table + " WHERE id=(SELECT max(id) FROM " + table + " );")
+            "SELECT id FROM " + table + " WHERE id=(SELECT max(id) FROM " + table + " )")
         max_id = cur.fetchall()[0][0]
         id = max_id + 1
     except IndexError:
@@ -122,7 +122,7 @@ class Login(Frame):
     def get_password(self):
         # Getting password from the table
         cur.execute("SELECT password FROM users WHERE username = \"" +
-                    str(self.user_entry.get()) + "\";")
+                    str(self.user_entry.get()) + "\"")
 
         # Return password in format [("password",)] if user is registerd
         # If not, function will return empty list
@@ -145,6 +145,7 @@ class Login(Frame):
         user_get = self.user_entry.get()
         pass_get = self.pass_entry.get()
         table_password = self.get_password()
+
         # If first symbol is integer, our table will throw exceptions, so we must check username
         if len(re.findall(r'^\d{1}', user_get)) != 0:
             self.title.config(text='Invalid Login, first letter must be a liter')
@@ -159,7 +160,7 @@ class Login(Frame):
 
             # Creating account
             cur.execute(
-                "INSERT INTO users (id, username, password) VALUES(" + VALUES + ");")
+                "INSERT INTO users (id, username, password) VALUES(" + VALUES + ")")
             con.commit()
 
             # Creating table for user's notes
@@ -184,10 +185,6 @@ class UserFrame(Frame):
         self.add_button = ttk.Button(self, text="New Note", command=self.new_note)
         self.add_button.grid(column=0, row=1, columnspan=1, sticky='w')
 
-        # Save button
-        self.update_button = ttk.Button(self, text="Save", command=self.update_note)
-        self.update_button.grid(column=0, row=1, columnspan=2, sticky='w')
-
         # Delete button
         self.delete_button = ttk.Button(self, text="Delete", command=self.delete_note)
         self.delete_button.grid(column=0, row=1, columnspan=2, sticky='w')
@@ -201,7 +198,7 @@ class UserFrame(Frame):
         self.text_scroll.pack(side=RIGHT, fill=Y)
 
         # Textbox
-        self.text_box = Text(self.note_frame, width=30, height=15, wrap=WORD)
+        self.text_box = Text(self.note_frame, width=30, height=15, wrap=WORD, state=DISABLED)
         self.text_box.pack()
 
         # Notes list label
@@ -224,19 +221,21 @@ class UserFrame(Frame):
         for child in self.winfo_children():
             child.grid_configure(padx=3, pady=3)
 
-        self.add_button.grid(padx=20)
-        self.update_button.grid(padx=105)
-        self.delete_button.grid(padx=190)
+        self.add_button.grid(padx=5)
+        self.delete_button.grid(padx=95)
 
         # Binds
         self.list_box.bind('<Double-1>', self.show_note)
 
         # Filling list_box
-        cur.execute("SELECT * FROM " + user_table + ";")
+        cur.execute("SELECT * FROM {}".format(user_table))
         notes = cur.fetchall()
+
         self.execute_status = 0  # Using for preventing unexpected behavior
+        self.flag = 0
         self.notes = []  # Сonvenient storage of notes
         self.notes_id_list = []
+
         for note in notes:
             # We get notes from table in format [(id, text, date),...]
             note = Note(note[0], note[1], note[2])
@@ -245,60 +244,61 @@ class UserFrame(Frame):
             self.listbox_update(note.text)
 
     def listbox_update(self, note_text, listbox_id=END):
-        if len(note_text) == 0:
-            return 0
-        elif len(note_text) < 15:
-            self.list_box.insert(listbox_id, re.sub(r'\n', ' ', note_text))
+        if len(note_text) < 15:
+            self.list_box.insert(listbox_id, re.sub(r'\n', ' ', "* " + note_text))
         else:
-            self.list_box.insert(listbox_id, re.sub(r'\n', ' ', note_text)[:15] + "...")
+            self.list_box.insert(listbox_id, re.sub(r'\n', ' ', "* " + note_text)[:15] + "...")
 
-    def delete_note_from_table(self, note_id):
-        cur.execute("DELETE FROM " + str(user_table) + " WHERE id=" + str(note_id) + ";")
-        con.commit()
-
-    def insert_note_into_table(self, note_id, note_text, note_date):
-        VALUES = str(note_id) + ", \"" + str(note_text) + "\",\"" + str(note_date) + "\""
-        cur.execute(
-            "INSERT INTO " + user_table + " (id, note, date) VALUES(" + VALUES + ");")
-        con.commit()
-
-    def new_note(self, event=None):
+    def update_note(self, id, index, selected_note_id, exec_stat=1):
+        cur.execute("SELECT note FROM {} WHERE id={}".format(user_table, str(selected_note_id)))
+        result_list = cur.fetchall()
         note_text = self.text_box.get("1.0", END)[:-1]
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
         if len(note_text) == 0:
+            self.note_frame.config(text="Use delete button!")
             return
 
-        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        id = get_id(user_table)
+        if exec_stat != 0 and len(result_list) > 0 and note_text != result_list[0][0]:
 
+            # Lisbox updating
+            self.listbox_update(note_text, index)
+            self.list_box.delete(index + 1)
+
+            # Database updating
+            cur.execute("UPDATE {} SET note=\"{}\",date=\"{}\" WHERE id={}".format(
+                user_table, note_text, current_date, str(selected_note_id)))
+            con.commit()
+
+            selected_note = self.notes[self.notes_id_list.index(selected_note_id)]
+            self.notes[self.notes.index(selected_note)] = Note(selected_note_id, note_text, current_date)
+
+            self.note_frame.config(text="Saved!")
+
+    def new_note(self, event=None):
+        self.text_box.config(state=NORMAL)
+
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        note_text = self.text_box.get("1.0", END)[:-1]
+        id = get_id(user_table)
+        print(id)
+
+        if id != '0':
+            selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
+            self.update_note(id, self.list_box.index(ACTIVE), selected_note_id)
+
+        note_text = ""
         self.text_box.delete("1.0", END)
         self.listbox_update(note_text)
 
         self.notes_id_list.append(int(id))
         self.notes.append(Note(id, note_text, current_date))
-        self.insert_note_into_table(id, note_text, current_date)
 
-    def update_note(self):
-        if len(self.notes) == 0:
-            return
+        cur.execute("INSERT INTO {} (id, note, date) VALUES({}, \"{}\", \"{}\")".format(
+            user_table, str(id), str(note_text), str(current_date)))
+        con.commit()
 
-        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        note_text = self.text_box.get("1.0", END)[:-1]
-        selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
-
-        if self.listbox_update(note_text, self.list_box.index(ACTIVE)) == 0:
-            self.note_frame.config(text="Use delete method!")
-            return
-
-        self.delete_note_from_table(selected_note_id)
-        self.insert_note_into_table(selected_note_id, note_text, current_date)
-
-        self.list_box.delete(ANCHOR)
-        self.note_frame.config(text="Saved!")
-
-        # note.id has equivalent index in self.notes_id_list and self.notes, so we can use it
-        selected_note = self.notes[self.notes_id_list.index(selected_note_id)]
-        # Updating note list
-        self.notes[self.notes.index(selected_note)] = Note(selected_note_id, note_text, current_date)
+        self.list_box.activate(END)
 
     def delete_note(self):
         # This check is carried out, because after deleting of the active note,
@@ -310,26 +310,40 @@ class UserFrame(Frame):
 
         selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
 
+        # Clearing listbox and textbox
         self.list_box.delete(ANCHOR)
         self.text_box.delete("1.0", END)
-        self.delete_note_from_table(selected_note_id)
+
+        cur.execute(("DELETE FROM {} WHERE id={}".format(str(user_table), str(selected_note_id))))
+        con.commit()
 
         selected_note = self.notes[self.notes_id_list.index(selected_note_id)]
         self.notes.pop(self.notes.index(selected_note))
 
+        self.text_box.config(state=DISABLED)
+
     def show_note(self, event):
-        if len(self.notes) == 0:
-            return
+        self.text_box.config(state=NORMAL)
+        id = get_id(user_table)
 
-        selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
-        selected_note = self.notes[self.notes_id_list.index(selected_note_id)]
+        if self.flag != 0 and id != '0':
+            selected_note_id = self.last_selected_note_id
+            self.update_note(id, self.notes_id_list.index(selected_note_id), selected_note_id, self.execute_status)
 
-        self.text_box.delete("1.0", END)
-        self.text_box.insert(END, str(selected_note))
+        if id != '0':
+            selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
+            selected_note = self.notes[self.notes_id_list.index(selected_note_id)]
 
-        self.note_frame.config(text=selected_note.date)
+            self.text_box.delete("1.0", END)
+            self.text_box.insert(END, str(selected_note))
 
-        self.execute_status = 1
+            self.note_frame.config(text=selected_note.date)
+
+            self.flag = 1
+            self.execute_status = 1
+
+            self.last_selected_note_id = selected_note_id
+            self.last_selected_note = selected_note
 
 
 if __name__ == '__main__':
