@@ -12,8 +12,8 @@ def main():
 
     # Getting all tables from db
     cur.execute("SELECT * FROM sqlite_master WHERE type='table'")
+    
     # Checking tables. If db does not contain table with users, we will create it.
-
     cur.execute(
         "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username VARCHAR(100), password VARCHAR(30))")
     con.commit()
