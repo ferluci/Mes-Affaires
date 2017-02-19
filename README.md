@@ -5,3 +5,4 @@ Simple notebook application in Python
 * Functionslity of normal text editor
 * Searching by tag's
 * Close window
+* Separate to the front and back
