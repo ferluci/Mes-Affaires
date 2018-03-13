@@ -307,7 +307,6 @@ class UserFrame(Frame):
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         note_text = self.text_box.get("1.0", END)[:-1]
         id = get_id(user_table)
-        print(id)
 
         if id != '0':
             selected_note_id = self.notes_id_list[self.list_box.index(ACTIVE)]
